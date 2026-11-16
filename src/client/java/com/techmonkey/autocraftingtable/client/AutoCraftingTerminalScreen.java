@@ -274,7 +274,6 @@ public final class AutoCraftingTerminalScreen extends AbstractContainerScreen<Au
      * The terminal holds no items; these are only pictures.
      */
     private void drawRecipePattern(GuiGraphicsExtractor graphics) {
-        boolean showMissing = menu.status() == AutoCraftingTerminalBlockEntity.STATUS_MISSING_INGREDIENTS;
         for (int gridSlot = 0; gridSlot < RecipeLayout.GRID_SIZE; gridSlot++) {
             ItemStack expected = menu.chosenType(gridSlot);
             if (expected.isEmpty()) {
@@ -283,7 +282,7 @@ public final class AutoCraftingTerminalScreen extends AbstractContainerScreen<Au
             int x = leftPos + GRID_X + gridSlot % 3 * 18;
             int y = topPos + GRID_Y + gridSlot / 3 * 18;
             graphics.item(expected, x, y);
-            if (showMissing && menu.isMissing(gridSlot)) {
+            if (isShownAsMissing(gridSlot)) {
                 graphics.fill(x, y, x + 16, y + 16, COLOR_GHOST_MISSING);
             }
         }
@@ -291,6 +290,29 @@ public final class AutoCraftingTerminalScreen extends AbstractContainerScreen<Au
         if (!result.isEmpty()) {
             drawItemWithCount(graphics, result, leftPos + RESULT_X, topPos + RESULT_Y);
         }
+    }
+
+    /**
+     * Red when storage can't cover this position for one craft. The server's answer is used after a failed craft;
+     * otherwise (turned off, paused, or between crafts) the storage counts decide, so it works while off too.
+     */
+    private boolean isShownAsMissing(int gridSlot) {
+        int status = menu.status();
+        if (status == AutoCraftingTerminalBlockEntity.STATUS_MISSING_INGREDIENTS) {
+            return menu.isMissing(gridSlot);
+        }
+        if (status == AutoCraftingTerminalBlockEntity.STATUS_NOT_CONNECTED || status == AutoCraftingTerminalBlockEntity.STATUS_CRAFTING) {
+            return false;
+        }
+        // Positions showing the same item draw from the same stock (rails use 6 iron), so count them together.
+        ItemStack expected = menu.chosenType(gridSlot);
+        int amountNeeded = 0;
+        for (int otherSlot = 0; otherSlot < RecipeLayout.GRID_SIZE; otherSlot++) {
+            if (!menu.chosenType(otherSlot).isEmpty() && menu.chosenType(otherSlot).is(expected.getItem())) {
+                amountNeeded++;
+            }
+        }
+        return menu.countInNetwork(gridSlot) < amountNeeded;
     }
 
     private void drawStatus(GuiGraphicsExtractor graphics) {
