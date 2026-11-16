@@ -6,16 +6,31 @@ A Tom's Simple Storage add-on for Fabric, Minecraft 26.3. It's a terminal that c
 
 1. Place the terminal on an Inventory Connector or an inventory cable, the same way as Tom's other terminals.
 2. Open it and pick a recipe from the list on the left. You can search by name.
-3. It takes one craft's ingredients from storage, crafts, and puts the result (plus any empty buckets or bottles) back into storage. Then it repeats.
+3. It takes one craft's ingredients from storage, crafts, and puts the result (plus any empty buckets or bottles) back into storage. Then it repeats, one craft every 3 seconds.
 
 A craft is all or nothing. If storage is missing an ingredient or is full, nothing is taken.
 
 The screen shows the recipe as pictures. Positions turn red when storage runs out of that item. Hover a position to see how many are in storage. The status line says what the terminal is doing.
 
+The **Can make** button above the recipe list hides recipes that storage doesn't have the ingredients for.
+
+## The light
+
+The red light on the front shows what the terminal is doing without opening it:
+
+- **Off:** no recipe picked, turned off, or paused by a redstone signal.
+- **Blinking:** crafting.
+- **Solid:** stuck. Open it to see why (missing ingredients, no redstone dust, storage full, not connected).
+
+## Turning it off
+
+The **On/Off** button at the top right of the screen turns the terminal off. While it's on, a redstone signal can still pause it, so either one stops it.
+
 ## Redstone
 
 - **Signal:** a redstone signal pauses the terminal, the same way it locks a hopper. A lever works as an off switch.
-- **Fuel:** the terminal takes one redstone dust from storage for every 64 crafts.
+- **Fuel:** the terminal takes one redstone dust from storage for every 64 crafts. The dust picture on the screen drains from the top as the charge is used.
+- **Comparator:** a comparator reading the terminal puts out a full signal while it's crafting and nothing when it's stopped.
 
 ## Settings
 

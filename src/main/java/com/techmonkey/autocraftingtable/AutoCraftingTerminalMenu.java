@@ -1,6 +1,9 @@
 package com.techmonkey.autocraftingtable;
 
+import java.util.BitSet;
 import java.util.List;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -38,7 +41,8 @@ public final class AutoCraftingTerminalMenu extends AbstractContainerMenu {
     private static final int DATA_STATUS = 5;
     private static final int DATA_FUEL_REQUIRED = 6;
     private static final int DATA_MISSING_SLOTS = 7;
-    private static final int DATA_FIRST_COUNT = 8;
+    private static final int DATA_SWITCHED_ON = 8;
+    private static final int DATA_FIRST_COUNT = 9;
     /** One count per grid position, then the redstone dust count. */
     private static final int DATA_COUNT = DATA_FIRST_COUNT + RecipeLayout.GRID_SIZE + 1;
 
@@ -120,6 +124,7 @@ public final class AutoCraftingTerminalMenu extends AbstractContainerMenu {
                 case DATA_STATUS -> terminal.status();
                 case DATA_FUEL_REQUIRED -> AutoCraftingConfig.get().requireFuel ? 1 : 0;
                 case DATA_MISSING_SLOTS -> terminal.missingSlots();
+                case DATA_SWITCHED_ON -> terminal.isSwitchedOn() ? 1 : 0;
                 default -> 0;
             };
         }
@@ -199,6 +204,10 @@ public final class AutoCraftingTerminalMenu extends AbstractContainerMenu {
         return syncedData.get(DATA_STATUS);
     }
 
+    public boolean isSwitchedOn() {
+        return syncedData.get(DATA_SWITCHED_ON) != 0;
+    }
+
     public boolean isMissing(int gridSlot) {
         return (syncedData.get(DATA_MISSING_SLOTS) & (1 << gridSlot)) != 0;
     }
@@ -211,6 +220,28 @@ public final class AutoCraftingTerminalMenu extends AbstractContainerMenu {
     /** How much redstone dust the network holds, capped at MAX_SHOWN_COUNT. */
     public int dustInNetwork() {
         return syncedData.get(DATA_FIRST_COUNT + RecipeLayout.GRID_SIZE) & 0xFFFF;
+    }
+
+    /** Client only: the last "Can make" answer from the server, or null before the first one arrives. */
+    private BitSet craftableRecipes;
+    private int craftableUpdates = 0;
+
+    public void receiveCraftableRecipes(BitSet craftable) {
+        craftableRecipes = craftable;
+        craftableUpdates++;
+    }
+
+    public boolean isCraftable(int recipeIndex) {
+        return craftableRecipes != null && craftableRecipes.get(recipeIndex);
+    }
+
+    public boolean hasCraftableAnswer() {
+        return craftableRecipes != null;
+    }
+
+    /** Goes up each time a new answer arrives, so the screen knows to refilter. */
+    public int craftableUpdates() {
+        return craftableUpdates;
     }
 
     public int selectedRecipeIndex() {
@@ -226,8 +257,15 @@ public final class AutoCraftingTerminalMenu extends AbstractContainerMenu {
         if (terminal == null || !stillValid(player) || player.isSpectator()) {
             return;
         }
+        if (action == MenuActionPayload.ACTION_REQUEST_CRAFTABLE) {
+            if (player instanceof ServerPlayer serverPlayer) {
+                ServerPlayNetworking.send(serverPlayer, new CraftableRecipesPayload(containerId, terminal.craftableRecipes(serverEntries)));
+            }
+            return;
+        }
         switch (action) {
             case MenuActionPayload.ACTION_CYCLE_TYPE -> terminal.cycleChosenType(value);
+            case MenuActionPayload.ACTION_TOGGLE_ON -> terminal.toggleSwitchedOn();
             case MenuActionPayload.ACTION_SELECT_RECIPE -> {
                 if (value >= 0 && value < serverEntries.size()) {
                     terminal.selectRecipe(serverEntries.get(value).recipeId());

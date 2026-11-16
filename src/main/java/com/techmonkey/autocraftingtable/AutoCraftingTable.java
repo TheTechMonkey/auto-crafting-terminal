@@ -62,6 +62,7 @@ public final class AutoCraftingTable implements ModInitializer {
                 Identifier.withDefaultNamespace("functional_blocks"))).register(output -> output.accept(ITEM));
 
         PayloadTypeRegistry.serverboundPlay().register(MenuActionPayload.TYPE, MenuActionPayload.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(CraftableRecipesPayload.TYPE, CraftableRecipesPayload.STREAM_CODEC);
         ServerPlayNetworking.registerGlobalReceiver(MenuActionPayload.TYPE, (payload, context) -> {
             if (context.player().containerMenu instanceof AutoCraftingTerminalMenu menu && menu.containerId == payload.containerId()) {
                 menu.handleAction(context.player(), payload.action(), payload.value());

@@ -1,0 +1,7 @@
+{
+  "parent": "toms_storage:block/crafting_terminal",
+  "textures": {
+    "2": "auto_crafting_table:block/auto_crafting_terminal_front_blink",
+    "particle": "toms_storage:block/inventory_block"
+  }
+}

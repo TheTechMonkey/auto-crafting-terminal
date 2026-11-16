@@ -1,55 +1,161 @@
 {
   "variants": {
-    "facing=north,pos=center": {
+    "facing=north,light=off,pos=center": {
       "model": "auto_crafting_table:block/auto_crafting_terminal"
     },
-    "facing=north,pos=up": {
+    "facing=north,light=off,pos=up": {
       "model": "auto_crafting_table:block/auto_crafting_terminal",
       "x": -90
     },
-    "facing=north,pos=down": {
+    "facing=north,light=off,pos=down": {
       "model": "auto_crafting_table:block/auto_crafting_terminal",
       "x": 90
     },
-    "facing=east,pos=center": {
+    "facing=east,light=off,pos=center": {
       "model": "auto_crafting_table:block/auto_crafting_terminal",
       "y": 90
     },
-    "facing=east,pos=up": {
+    "facing=east,light=off,pos=up": {
       "model": "auto_crafting_table:block/auto_crafting_terminal",
       "y": 90,
       "x": -90
     },
-    "facing=east,pos=down": {
+    "facing=east,light=off,pos=down": {
       "model": "auto_crafting_table:block/auto_crafting_terminal",
       "y": 90,
       "x": 90
     },
-    "facing=south,pos=center": {
+    "facing=south,light=off,pos=center": {
       "model": "auto_crafting_table:block/auto_crafting_terminal",
       "y": 180
     },
-    "facing=south,pos=up": {
+    "facing=south,light=off,pos=up": {
       "model": "auto_crafting_table:block/auto_crafting_terminal",
       "y": 180,
       "x": -90
     },
-    "facing=south,pos=down": {
+    "facing=south,light=off,pos=down": {
       "model": "auto_crafting_table:block/auto_crafting_terminal",
       "y": 180,
       "x": 90
     },
-    "facing=west,pos=center": {
+    "facing=west,light=off,pos=center": {
       "model": "auto_crafting_table:block/auto_crafting_terminal",
       "y": 270
     },
-    "facing=west,pos=up": {
+    "facing=west,light=off,pos=up": {
       "model": "auto_crafting_table:block/auto_crafting_terminal",
       "y": 270,
       "x": -90
     },
-    "facing=west,pos=down": {
+    "facing=west,light=off,pos=down": {
       "model": "auto_crafting_table:block/auto_crafting_terminal",
+      "y": 270,
+      "x": 90
+    },
+    "facing=north,light=blink,pos=center": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_crafting"
+    },
+    "facing=north,light=blink,pos=up": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_crafting",
+      "x": -90
+    },
+    "facing=north,light=blink,pos=down": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_crafting",
+      "x": 90
+    },
+    "facing=east,light=blink,pos=center": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_crafting",
+      "y": 90
+    },
+    "facing=east,light=blink,pos=up": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_crafting",
+      "y": 90,
+      "x": -90
+    },
+    "facing=east,light=blink,pos=down": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_crafting",
+      "y": 90,
+      "x": 90
+    },
+    "facing=south,light=blink,pos=center": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_crafting",
+      "y": 180
+    },
+    "facing=south,light=blink,pos=up": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_crafting",
+      "y": 180,
+      "x": -90
+    },
+    "facing=south,light=blink,pos=down": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_crafting",
+      "y": 180,
+      "x": 90
+    },
+    "facing=west,light=blink,pos=center": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_crafting",
+      "y": 270
+    },
+    "facing=west,light=blink,pos=up": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_crafting",
+      "y": 270,
+      "x": -90
+    },
+    "facing=west,light=blink,pos=down": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_crafting",
+      "y": 270,
+      "x": 90
+    },
+    "facing=north,light=solid,pos=center": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_stuck"
+    },
+    "facing=north,light=solid,pos=up": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_stuck",
+      "x": -90
+    },
+    "facing=north,light=solid,pos=down": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_stuck",
+      "x": 90
+    },
+    "facing=east,light=solid,pos=center": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_stuck",
+      "y": 90
+    },
+    "facing=east,light=solid,pos=up": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_stuck",
+      "y": 90,
+      "x": -90
+    },
+    "facing=east,light=solid,pos=down": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_stuck",
+      "y": 90,
+      "x": 90
+    },
+    "facing=south,light=solid,pos=center": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_stuck",
+      "y": 180
+    },
+    "facing=south,light=solid,pos=up": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_stuck",
+      "y": 180,
+      "x": -90
+    },
+    "facing=south,light=solid,pos=down": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_stuck",
+      "y": 180,
+      "x": 90
+    },
+    "facing=west,light=solid,pos=center": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_stuck",
+      "y": 270
+    },
+    "facing=west,light=solid,pos=up": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_stuck",
+      "y": 270,
+      "x": -90
+    },
+    "facing=west,light=solid,pos=down": {
+      "model": "auto_crafting_table:block/auto_crafting_terminal_stuck",
       "y": 270,
       "x": 90
     }

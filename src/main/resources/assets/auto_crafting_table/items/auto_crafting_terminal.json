@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "auto_crafting_table:block/auto_crafting_terminal"
+    "model": "auto_crafting_table:block/auto_crafting_terminal_stuck"
   }
 }

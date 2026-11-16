@@ -7,6 +7,7 @@ import com.tom.storagemod.inventory.NetworkInventory;
 import com.tom.storagemod.platform.PlatformBlockEntity;
 import com.tom.storagemod.util.TickerUtil;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -34,6 +35,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeManager;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -44,7 +46,8 @@ import net.minecraft.world.level.storage.ValueOutput;
  */
 public final class AutoCraftingTerminalBlockEntity extends PlatformBlockEntity
         implements TickerUtil.TickableServer, ExtendedMenuProvider<MenuOpeningData> {
-    public static final int TICKS_PER_CRAFT = 10;
+    /** One craft every 3 seconds. */
+    public static final int TICKS_PER_CRAFT = 60;
     private static final double MAX_USE_DISTANCE_SQUARED = 64.0;
 
     // Status codes shown on the screen. The menu syncs this number to the client.
@@ -56,11 +59,14 @@ public final class AutoCraftingTerminalBlockEntity extends PlatformBlockEntity
     public static final int STATUS_NETWORK_FULL = 5;
     public static final int STATUS_CANNOT_CRAFT = 6;
     public static final int STATUS_CRAFTING = 7;
+    public static final int STATUS_TURNED_OFF = 8;
 
     private final List<ItemStack> chosenTypes = new ArrayList<>(Collections.nCopies(RecipeLayout.GRID_SIZE, ItemStack.EMPTY));
     private final NetworkInventory network = new NetworkInventory();
     private boolean networkAttached = false;
     private String selectedRecipeId = "";
+    /** The On/Off button in the screen. A redstone signal can still pause it while it is on. */
+    private boolean switchedOn = true;
     private int charge = 0;
     private int cooldown = 0;
     private int status = STATUS_NO_RECIPE;
@@ -127,12 +133,26 @@ public final class AutoCraftingTerminalBlockEntity extends PlatformBlockEntity
         if (recipe() == null) {
             status = STATUS_NO_RECIPE;
             missingSlots = 0;
+        } else if (!switchedOn) {
+            status = STATUS_TURNED_OFF;
         } else if (AutoCraftingConfig.get().redstoneControl && level.hasNeighborSignal(getBlockPos())) {
             status = STATUS_PAUSED_BY_SIGNAL;
         } else if (cooldown == 0) {
             cooldown = TICKS_PER_CRAFT;
             craftOnce();
         }
+        showStatusOnBlock();
+    }
+
+    /** Sets the front light to match the status. Comparators read the light, so they are told when it changes. */
+    private void showStatusOnBlock() {
+        BlockState state = getBlockState();
+        TerminalLight wantedLight = TerminalLight.forStatus(status);
+        if (!state.hasProperty(AutoCraftingTerminalBlock.LIGHT) || state.getValue(AutoCraftingTerminalBlock.LIGHT) == wantedLight) {
+            return;
+        }
+        level.setBlock(getBlockPos(), state.setValue(AutoCraftingTerminalBlock.LIGHT, wantedLight), Block.UPDATE_CLIENTS);
+        level.updateNeighbourForOutputSignal(getBlockPos(), state.getBlock());
     }
 
     private void craftOnce() {
@@ -196,6 +216,15 @@ public final class AutoCraftingTerminalBlockEntity extends PlatformBlockEntity
         return counts;
     }
 
+    /** Which recipes in the book storage holds the ingredients for. Empty when not connected. */
+    public BitSet craftableRecipes(List<RecipeBookEntry> entries) {
+        Storage<ItemVariant> storage = networkStorage();
+        if (storage == null || !(level instanceof ServerLevel serverLevel)) {
+            return new BitSet();
+        }
+        return CraftableRecipes.find(serverLevel, entries, CraftableRecipes.countByItem(storage.nonEmptyViews()));
+    }
+
     // ----- Menu -----
 
     @Override
@@ -232,6 +261,17 @@ public final class AutoCraftingTerminalBlockEntity extends PlatformBlockEntity
 
     public int status() {
         return status;
+    }
+
+    public boolean isSwitchedOn() {
+        return switchedOn;
+    }
+
+    /** The screen's On/Off button. */
+    public void toggleSwitchedOn() {
+        switchedOn = !switchedOn;
+        cooldown = 0;
+        setChanged();
     }
 
     public int missingSlots() {
@@ -354,6 +394,7 @@ public final class AutoCraftingTerminalBlockEntity extends PlatformBlockEntity
         super.saveAdditional(output);
         output.putString("Recipe", selectedRecipeId);
         output.putInt("Charge", charge);
+        output.putBoolean("SwitchedOn", switchedOn);
         output.store("ChosenTypes", Codec.STRING.listOf(), chosenTypes.stream()
                 .map(stack -> stack.isEmpty() ? "" : BuiltInRegistries.ITEM.getKey(stack.getItem()).toString())
                 .toList());
@@ -363,6 +404,7 @@ public final class AutoCraftingTerminalBlockEntity extends PlatformBlockEntity
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
         selectedRecipeId = input.getStringOr("Recipe", "");
+        switchedOn = input.getBooleanOr("SwitchedOn", true);
         charge = Math.clamp(input.getIntOr("Charge", 0), 0, NetworkCrafter.CRAFTS_PER_DUST);
         List<String> savedTypes = input.read("ChosenTypes", Codec.STRING.listOf()).orElse(List.of());
         for (int gridSlot = 0; gridSlot < RecipeLayout.GRID_SIZE; gridSlot++) {

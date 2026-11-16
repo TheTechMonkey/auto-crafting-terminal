@@ -56,6 +56,20 @@ public final class AutoCraftingTerminalScreen extends AbstractContainerScreen<Au
     private static final int PAGE_BUTTON_WIDTH = 20;
     private static final int PAGE_BUTTON_HEIGHT = 12;
 
+    // "Can make" filter button, top right of the recipe list.
+    private static final int FILTER_BUTTON_WIDTH = 52;
+    private static final int FILTER_BUTTON_HEIGHT = 12;
+    private static final int FILTER_BUTTON_X = LIST_X + LIST_WIDTH - FILTER_BUTTON_WIDTH;
+    private static final int FILTER_BUTTON_Y = 4;
+    /** How often the "Can make" list is rechecked while it is turned on: every 2 seconds. */
+    private static final int CRAFTABLE_REFRESH_TICKS = 40;
+
+    // On/Off button, top right of the machine panel.
+    private static final int POWER_BUTTON_WIDTH = 30;
+    private static final int POWER_BUTTON_HEIGHT = 12;
+    private static final int POWER_BUTTON_X = MACHINE_WIDTH - 8 - POWER_BUTTON_WIDTH;
+    private static final int POWER_BUTTON_Y = 4;
+
     private static final int STATUS_Y = 74;
 
     private static final int COLOR_PANEL_EDGE = 0xff373737;
@@ -71,13 +85,19 @@ public final class AutoCraftingTerminalScreen extends AbstractContainerScreen<Au
     private static final int COLOR_BUTTON = 0xff7a7a7a;
     private static final int COLOR_GOOD = 0xff2e6b1f;
     private static final int COLOR_WARNING = 0xff9a4a00;
+    private static final int COLOR_POWER_ON = 0xff3c8a2a;
 
     private static final ItemStack REDSTONE_PICTURE = new ItemStack(Items.REDSTONE);
+
+    /** Remembered between openings for as long as the game runs. */
+    private static boolean showOnlyCraftable = false;
 
     private final List<Integer> filteredRecipeIndexes = new ArrayList<>();
     private final List<String> searchableNames = new ArrayList<>();
     private EditBox searchBox;
     private int currentPage = 0;
+    private int ticksUntilCraftableRefresh = 0;
+    private int lastCraftableUpdate = -1;
 
     public AutoCraftingTerminalScreen(AutoCraftingTerminalMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title, MACHINE_WIDTH, PANEL_HEIGHT);
@@ -119,7 +139,10 @@ public final class AutoCraftingTerminalScreen extends AbstractContainerScreen<Au
         filteredRecipeIndexes.clear();
         String query = searchBox.getValue().toLowerCase(Locale.ROOT).trim();
         for (int index = 0; index < searchableNames.size(); index++) {
-            if (query.isEmpty() || searchableNames.get(index).contains(query)) {
+            boolean matchesSearch = query.isEmpty() || searchableNames.get(index).contains(query);
+            // Until the server's first answer arrives, the filter shows everything rather than an empty list.
+            boolean passesFilter = !showOnlyCraftable || !menu.hasCraftableAnswer() || menu.isCraftable(index);
+            if (matchesSearch && passesFilter) {
                 filteredRecipeIndexes.add(index);
             }
         }
@@ -132,6 +155,29 @@ public final class AutoCraftingTerminalScreen extends AbstractContainerScreen<Au
         if (position >= 0) {
             currentPage = position / ROWS_PER_PAGE;
         }
+    }
+
+    @Override
+    protected void containerTick() {
+        super.containerTick();
+        if (!showOnlyCraftable) {
+            return;
+        }
+        if (--ticksUntilCraftableRefresh <= 0) {
+            ticksUntilCraftableRefresh = CRAFTABLE_REFRESH_TICKS;
+            sendAction(MenuActionPayload.ACTION_REQUEST_CRAFTABLE, 0);
+        }
+        if (menu.craftableUpdates() != lastCraftableUpdate) {
+            lastCraftableUpdate = menu.craftableUpdates();
+            applySearch();
+        }
+    }
+
+    private void toggleCraftableFilter() {
+        showOnlyCraftable = !showOnlyCraftable;
+        ticksUntilCraftableRefresh = 0;
+        currentPage = 0;
+        applySearch();
     }
 
     private int lastPage() {
@@ -169,8 +215,13 @@ public final class AutoCraftingTerminalScreen extends AbstractContainerScreen<Au
             String name = fitToWidth(result.getHoverName().getString(), LIST_WIDTH - 22);
             graphics.text(font, name, x + 20, y + 5, selected ? 0xffffffff : COLOR_LABEL, false);
         }
+        drawTextButton(graphics, FILTER_BUTTON_X, FILTER_BUTTON_Y, FILTER_BUTTON_WIDTH, FILTER_BUTTON_HEIGHT,
+                Component.translatable(showOnlyCraftable ? "gui.auto_crafting_table.filter.craftable" : "gui.auto_crafting_table.filter.all").getString(),
+                showOnlyCraftable ? COLOR_ROW_SELECTED : COLOR_BUTTON);
         if (filteredRecipeIndexes.isEmpty()) {
-            label(graphics, Component.translatable("gui.auto_crafting_table.no_matches"), LIST_X + 2, LIST_Y + 5, COLOR_HINT);
+            String emptyKey = showOnlyCraftable && searchBox.getValue().isBlank()
+                    ? "gui.auto_crafting_table.nothing_craftable" : "gui.auto_crafting_table.no_matches";
+            label(graphics, Component.translatable(emptyKey), LIST_X + 2, LIST_Y + 5, COLOR_HINT);
         }
         drawTextButton(graphics, LIST_X, PAGE_BUTTON_Y, PAGE_BUTTON_WIDTH, PAGE_BUTTON_HEIGHT, "<");
         drawTextButton(graphics, LIST_X + LIST_WIDTH - PAGE_BUTTON_WIDTH, PAGE_BUTTON_Y, PAGE_BUTTON_WIDTH, PAGE_BUTTON_HEIGHT, ">");
@@ -189,10 +240,15 @@ public final class AutoCraftingTerminalScreen extends AbstractContainerScreen<Au
             int x = leftPos + DUST_X;
             int y = topPos + DUST_Y;
             graphics.item(REDSTONE_PICTURE, x, y);
-            // Full color while there is charge or dust to draw on; faded when both are gone; red when that stops crafting.
             if (menu.status() == AutoCraftingTerminalBlockEntity.STATUS_NO_FUEL) {
+                // Red when running out of dust is what stopped crafting.
                 graphics.fill(x, y, x + 16, y + 16, COLOR_GHOST_MISSING);
-            } else if (menu.charge() == 0 && menu.dustInNetwork() == 0) {
+            } else if (menu.charge() > 0) {
+                // The dust drains from the top down as its charge is used: the used part is faded out.
+                int usedHeight = 16 * (NetworkCrafter.CRAFTS_PER_DUST - menu.charge()) / NetworkCrafter.CRAFTS_PER_DUST;
+                graphics.fill(x, y, x + 16, y + usedHeight, COLOR_GHOST_FADE);
+            } else if (menu.dustInNetwork() == 0) {
+                // No charge and nothing in storage to load next.
                 graphics.fill(x, y, x + 16, y + 16, COLOR_GHOST_FADE);
             }
         }
@@ -206,6 +262,10 @@ public final class AutoCraftingTerminalScreen extends AbstractContainerScreen<Au
         }
         drawRecipePattern(graphics);
         drawStatus(graphics);
+        boolean switchedOn = menu.isSwitchedOn();
+        drawTextButton(graphics, POWER_BUTTON_X, POWER_BUTTON_Y, POWER_BUTTON_WIDTH, POWER_BUTTON_HEIGHT,
+                Component.translatable(switchedOn ? "gui.auto_crafting_table.power.on" : "gui.auto_crafting_table.power.off").getString(),
+                switchedOn ? COLOR_POWER_ON : COLOR_BUTTON);
     }
 
     /**
@@ -237,12 +297,10 @@ public final class AutoCraftingTerminalScreen extends AbstractContainerScreen<Au
         int status = menu.status();
         int color = switch (status) {
             case AutoCraftingTerminalBlockEntity.STATUS_CRAFTING -> COLOR_GOOD;
-            case AutoCraftingTerminalBlockEntity.STATUS_NO_RECIPE -> COLOR_HINT;
+            case AutoCraftingTerminalBlockEntity.STATUS_NO_RECIPE, AutoCraftingTerminalBlockEntity.STATUS_TURNED_OFF -> COLOR_HINT;
             default -> COLOR_WARNING;
         };
-        Component text = status == AutoCraftingTerminalBlockEntity.STATUS_CRAFTING && menu.fuelRequired()
-                ? Component.translatable("gui.auto_crafting_table.status.crafting_fuel", menu.charge())
-                : Component.translatable("gui.auto_crafting_table.status." + status);
+        Component text = Component.translatable("gui.auto_crafting_table.status." + status);
         graphics.fill(leftPos + 8, topPos + STATUS_Y + 1, leftPos + 13, topPos + STATUS_Y + 6, color);
         graphics.text(font, fitToWidth(text.getString(), MACHINE_WIDTH - 24), leftPos + 16, topPos + STATUS_Y, color, false);
     }
@@ -279,6 +337,12 @@ public final class AutoCraftingTerminalScreen extends AbstractContainerScreen<Au
         if (!menu.previewResult().isEmpty() && isInside(relativeX, relativeY, RESULT_X, RESULT_Y, 16, 16)) {
             graphics.setTooltipForNextFrame(menu.previewResult().getHoverName(), mouseX, mouseY);
         }
+        if (isInside(relativeX, relativeY, POWER_BUTTON_X, POWER_BUTTON_Y, POWER_BUTTON_WIDTH, POWER_BUTTON_HEIGHT)) {
+            graphics.setTooltipForNextFrame(Component.translatable("gui.auto_crafting_table.power.tip"), mouseX, mouseY);
+        }
+        if (isInside(relativeX, relativeY, FILTER_BUTTON_X, FILTER_BUTTON_Y, FILTER_BUTTON_WIDTH, FILTER_BUTTON_HEIGHT)) {
+            graphics.setTooltipForNextFrame(Component.translatable("gui.auto_crafting_table.filter.tip"), mouseX, mouseY);
+        }
         int hoveredRecipe = recipeUnderMouse(relativeX, relativeY);
         if (hoveredRecipe >= 0) {
             graphics.setTooltipForNextFrame(menu.recipeResults.get(hoveredRecipe).getHoverName(), mouseX, mouseY);
@@ -308,6 +372,14 @@ public final class AutoCraftingTerminalScreen extends AbstractContainerScreen<Au
         boolean rightButton = event.button() == SDL_BUTTON_RIGHT;
 
         if (leftButton) {
+            if (isInside(relativeX, relativeY, POWER_BUTTON_X, POWER_BUTTON_Y, POWER_BUTTON_WIDTH, POWER_BUTTON_HEIGHT)) {
+                sendAction(MenuActionPayload.ACTION_TOGGLE_ON, 0);
+                return true;
+            }
+            if (isInside(relativeX, relativeY, FILTER_BUTTON_X, FILTER_BUTTON_Y, FILTER_BUTTON_WIDTH, FILTER_BUTTON_HEIGHT)) {
+                toggleCraftableFilter();
+                return true;
+            }
             if (isInside(relativeX, relativeY, LIST_X, PAGE_BUTTON_Y, PAGE_BUTTON_WIDTH, PAGE_BUTTON_HEIGHT)) {
                 currentPage = Math.max(0, currentPage - 1);
                 return true;
@@ -423,10 +495,14 @@ public final class AutoCraftingTerminalScreen extends AbstractContainerScreen<Au
     }
 
     private void drawTextButton(GuiGraphicsExtractor graphics, int relativeX, int relativeY, int width, int height, String text) {
+        drawTextButton(graphics, relativeX, relativeY, width, height, text, COLOR_BUTTON);
+    }
+
+    private void drawTextButton(GuiGraphicsExtractor graphics, int relativeX, int relativeY, int width, int height, String text, int fillColor) {
         int x = leftPos + relativeX;
         int y = topPos + relativeY;
         graphics.fill(x, y, x + width, y + height, COLOR_PANEL_EDGE);
-        graphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, COLOR_BUTTON);
+        graphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, fillColor);
         graphics.fill(x + 1, y + 1, x + width - 1, y + 2, 0x40ffffff);
         graphics.text(font, text, x + width / 2 - font.width(text) / 2, y + (height - 8) / 2, 0xffffffff, true);
     }
