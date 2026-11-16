@@ -1,0 +1,74 @@
+plugins {
+    id "net.fabricmc.fabric-loom" version "1.17.21"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    mavenCentral()
+    maven { url = "https://maven.terraformersmc.com/releases" }
+}
+
+loom {
+    splitEnvironmentSourceSets()
+
+    mods {
+        "auto_crafting_table" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    // Optional: only used for the settings screen when Mod Menu is installed.
+    clientCompileOnly("com.terraformersmc:modmenu:${project.modmenu_version}") { transitive = false }
+    // Tom's Simple Storage: required at runtime; compiled against the jar the pack uses.
+    compileOnly files("libs/toms_storage_fabric-26.3-2.12.2.jar")
+}
+
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": inputs.properties.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 25
+}
+
+java {
+    withSourcesJar()
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+jar {
+    from("LICENSE") {
+        rename { "${it}_${project.base.archivesName.get()}" }
+    }
+}
+
+// Crafting engine checks run against real Minecraft recipes and item stacks.
+tasks.register("engineTest", JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "com.techmonkey.autocraftingtable.NetworkCrafterTest"
+    enableAssertions = true
+}
+
+// The crafting checks are a plain main() program run by engineTest, not JUnit tests.
+tasks.named("test") {
+    enabled = false
+}

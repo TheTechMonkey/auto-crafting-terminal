@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "redstone",
+  "ingredients": [
+    "toms_storage:crafting_terminal",
+    "minecraft:crafter",
+    "minecraft:redstone"
+  ],
+  "result": {
+    "id": "auto_crafting_table:auto_crafting_terminal",
+    "count": 1
+  }
+}

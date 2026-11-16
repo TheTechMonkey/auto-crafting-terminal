@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "auto_crafting_table",
+  "version": "${version}",
+  "name": "Auto Crafting Terminal",
+  "description": "Tom's Simple Storage add-on: a terminal that crafts one chosen recipe over and over from your storage network.",
+  "authors": [
+    "TechMonkey"
+  ],
+  "license": "MIT",
+  "icon": "assets/auto_crafting_table/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.techmonkey.autocraftingtable.AutoCraftingTable"
+    ],
+    "client": [
+      "com.techmonkey.autocraftingtable.client.AutoCraftingTableClient"
+    ],
+    "modmenu": [
+      "com.techmonkey.autocraftingtable.client.AutoCraftingModMenu"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": ">=0.166.2",
+    "toms_storage": "*"
+  }
+}
